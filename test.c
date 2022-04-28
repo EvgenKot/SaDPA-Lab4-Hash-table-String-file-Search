@@ -17,6 +17,7 @@ typedef struct Queue
     size_t size;
 } Queue;
 
+//Вывод очереди в консоль
 void QueuePrint(Queue *q)
 {
     Node *current = q->head;
@@ -40,6 +41,85 @@ Node *QueueSearch(Queue *q, char *data)
         current = current->next;
     }
     return NULL;
+}
+
+Node *QueueNodeGetPrevious(Queue *q, Node *target)
+{
+    Node *current = q->head;
+    while (current)
+    {
+        if (current->next == target)
+            return current;
+        current = current->next;
+    }
+    printf("No preveus\n");
+    return NULL;
+}
+
+//Удалить первый элемент
+void QueuePop(Queue *q)
+{
+    if (q->head == NULL)
+    {
+        printf("Deleting NULL element error\n");
+        exit(-1);
+    }
+    q->size--;
+    Node *target = NULL;
+    target = q->head;
+    free(target->text);
+    q->head = q->head->next;
+    free(target);
+    return;
+}
+
+//Удалить первый элемент
+void QueuePopBack(Queue *q)
+{
+    if (q->tail == NULL)
+    {
+        printf("Deleting NULL element error\n");
+        exit(-1);
+    }
+    q->size--;
+    Node *target;
+    target = q->tail;
+    Node *previous;
+    previous = QueueNodeGetPrevious(q, q->tail);
+    
+    free(target->text);
+    free(target);
+    previous->next = NULL;
+    return;
+}
+
+//Удаление произвольного элемента
+void QueueNodeDelete(Queue *q, Node *target)
+{
+    if (q->head == target)
+    {
+        printf("Deleting head\n");
+        QueuePop(q);
+        return;
+    }
+
+    else if (q->tail == target)
+    {
+        printf("Deleting tail\n");
+        QueuePopBack(q);
+        return;
+    }
+
+    else if (target)
+    {
+        Node *previous = QueueNodeGetPrevious(q, target);
+        previous->next = target->next;
+        free(target->text);
+        free(target);
+        return;
+    }
+    printf("No element to delete\n");
+    return;
 }
 
 //Добавляет элемент в конец очереди
@@ -152,13 +232,13 @@ int main()
 
     printf("Openning file...\n");
     FILE *file = fopen("input.txt", "r");
-    if (!file);
+    if (!file)
     {
         printf("ERROR");
-        exit(0);
+        return 0;
     }
     printf("Completed.\n");
-        
+
     /*
     for (int i = 0; i < 15; i++)
     {
@@ -170,9 +250,18 @@ int main()
 
     FileStringQueue(file, q);
 
+    fclose(file);
+
     QueuePrint(q);
 
-    fclose(file);
+    char str[80];
+    printf("Enter string\n");
+    scanf("%s", str);
+    Node *target = QueueSearch(q, str);
+    if (target)
+        QueueNodeDelete(q, target);
+
+    QueuePrint(q);
     getchar();
     return 1;
 }

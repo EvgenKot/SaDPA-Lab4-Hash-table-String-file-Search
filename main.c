@@ -113,30 +113,105 @@ void QueuePushBack(Queue *q, char *data)
         search->amount = search->amount + 1;
 }
 
-//Удаление элемента очереди
+Node *QueueNodeGetPrevious(Queue *q, Node *target)
+{
+    Node *current = q->head;
+    while (current)
+    {
+        if (current->next == target)
+            return current;
+        current = current->next;
+    }
+    printf("No preveus\n");
+    return NULL;
+}
+
+//Удалить первый элемент
 void QueuePop(Queue *q)
 {
-    q->size--;
-    Node *prev = NULL;
-
     if (q->head == NULL)
     {
+        printf("Deleting NULL element error\n");
         exit(-1);
     }
-    prev = q->head;
+    q->size--;
+    Node *target = NULL;
+    target = q->head;
+    free(target->text);
     q->head = q->head->next;
-    free(prev->text);
-    free(prev);
+    free(target);
     return;
 }
 
-//Отчистка очереди
-int QueueFree(Queue *q)
+//Удалить последний элемент
+void QueuePopBack(Queue *q)
 {
-    while (q->size != 0)
+    if (q->tail == NULL)
     {
-        QueuePop(q);
+        printf("Deleting NULL element error\n");
+        exit(-1);
     }
+    q->size--;
+    Node *target;
+    target = q->tail;
+    Node *previous;
+    previous = QueueNodeGetPrevious(q, q->tail);
+
+    free(target->text);
+    free(target);
+    previous->next = NULL;
+    return;
+}
+
+//Удаление произвольного элемента
+void QueueNodeDelete(Queue *q, Node *target)
+{
+    if (q->head == target)
+    {
+        printf("Deleting head\n");
+        QueuePop(q);
+        return;
+    }
+
+    else if (q->tail == target)
+    {
+        printf("Deleting tail\n");
+        QueuePopBack(q);
+        return;
+    }
+
+    else if (target)
+    {
+        q->size--;
+        Node *previous = QueueNodeGetPrevious(q, target);
+        previous->next = target->next;
+        free(target->text);
+        free(target);
+        return;
+    }
+    printf("No element to delete\n");
+    return;
+}
+
+//Ищет узел со словом по первой букве
+Node *QueueNodeSearchChar(Queue *q, char data)
+{
+    Node *current = q->head;
+    while (current)
+    {
+        if (current->text[0] == data)
+            return current;
+        current = current->next;
+    }
+    return NULL;
+}
+
+//Отчистка очереди
+void QueueFree(Queue *q)
+{
+    if (q->head)
+        while (q->size != 0)
+            QueuePop(q);
 }
 
 //Создаёт хеш для числа
@@ -188,7 +263,7 @@ void HashTableAdd(Table *t, char *data)
 }
 
 //Поиск элемента в хеш-таблице
-void HashTableSearch(Table *t, char *data)
+void HashTableSearchPrint(Table *t, char *data)
 {
     int position;
     int index = HashGenerate(data[0], t->size);
@@ -197,17 +272,26 @@ void HashTableSearch(Table *t, char *data)
     {
         printf("|%4d|%4d|", index, t->table[index]->size);
         QueuePrint(t->table[index]);
-        //printf("     amount");
-        // QueueAmountPrint(t->table[index]);
-        // printf("               ");
-        // for (int i = position; i > 1; i--)
-        //     printf("      ");
-        // printf("^\n");
+        // printf("     amount");
+        //  QueueAmountPrint(t->table[index]);
+        //  printf("               ");
+        //  for (int i = position; i > 1; i--)
+        //      printf("      ");
+        //  printf("^\n");
         printf("%d steps \n", position);
         return;
     }
     else
         printf("No element.\n");
+}
+
+//Поиск узла в хеш таблице
+Node *HashTableNodeSearch(Table *t, Queue **q, char *data)
+{
+    int index = HashGenerate(data[0], t->size);
+    *q = t->table[index];
+    Node *n = QueueSearch(*q, data);
+    return n;
 }
 
 //Отчистка памяти
@@ -291,8 +375,7 @@ void Menu()
     printf("1. Print hash-table\n");
     printf("2. Search\n");
     printf("3. Search and delete\n");
-    printf("4. Forward order\n");
-    printf("5. Backward order\n");
+    printf("4. Delete by char\n");
     printf("0. Exit\n");
     printf(">>");
 }
@@ -329,8 +412,9 @@ int main()
 
     HashTablePrint(t);
 
-    getch();
     char str[80];
+    Node *target;
+    Queue *queue;
     int choice = 1;
     while (choice)
     {
@@ -340,23 +424,51 @@ int main()
         scanf("%d", &choice);
         switch (choice)
         {
-        case 1: //Print hash-table
+        case 1: // Print hash-table
             HashTablePrint(t);
             break;
-        
-        case 2: //Search by string
+
+        case 2: // Search by string
             printf("Enter a string (max len 100):\n>>");
             scanf("%s", str);
-            HashTableSearch(t, str);
-
+            HashTableSearchPrint(t, str);
             break;
 
-        case 0: //Exit
+        case 3: // Search and delete
+            printf("Enter a string (max len 100):\n>>");
+            scanf("%s", str);
+            target = HashTableNodeSearch(t, &queue, str);
+            if (!target)
+            {
+                printf("Nothing to delete\n");
+                break;
+            }
+            printf("Deleting %s\n", target->text);
+            QueuePrint(queue);
+            QueueNodeDelete(queue, target);
+            QueuePrint(queue);
+            break;
+
+        case 4: // Delete by char
+            printf("Enter a char\n>>");
+            scanf("%s", str);
+            printf("You wrote %c\n", str[0]);
+            printf("Deleting: ");
+            int hash = HashGenerate(str[0], t->size);
+            target = QueueNodeSearchChar(t->table[hash], str[0]);
+            while (target)
+            {
+                QueueNodeDelete(t->table[hash], target);
+                target = QueueNodeSearchChar(t->table[hash], str[0]);
+            }
+            printf("Completed.\n");
+            break;
+
+        case 0: // Exit
             printf("Stop...\n");
             HashTableFree(t);
             printf("Stopped.\n");
-            break;        
-        
+            break;
 
         default: //Ошибка ввода
             printf("Invalid input\n");
@@ -366,27 +478,5 @@ int main()
         }
     }
 
-
-
-    
-
-    /*
-    while (c)
-    {
-        
-        printf("Write string to search (0 - exit)\n>>");
-        scanf("%s", str);
-        switch (c)
-        {
-        case -1:
-            printf("Exit.\n");
-            break;
-
-        default:
-            HashTableSearch(t, c);
-            break;
-        }
-    }
-    */
     return 0;
 }
